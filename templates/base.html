@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Easy Nginx{% endblock %} - Nginx 可视化配置</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-inner">
+            <div class="logo">
+                <span class="logo-icon">⚙️</span>
+                <h1>Easy Nginx</h1>
+                <span class="subtitle">可视化配置工具</span>
+            </div>
+            <div class="header-info">
+                <span class="nginx-version">Nginx 版本：{{ nginx_version }}</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="app-main">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="app-footer">
+        <p>Easy Nginx · 离线运行 · 数据存储于本地 sites.json</p>
+    </footer>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

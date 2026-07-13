@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}站点列表{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📋 我的站点</h2>
+    <a href="{{ url_for('site_new') }}" class="btn btn-primary">➕ 新建站点</a>
+</div>
+
+{% if sites %}
+<div class="site-grid">
+    {% for site in sites %}
+    <div class="site-card" data-id="{{ site.id }}">
+        <div class="site-card-header">
+            <h3>{{ site.name }}</h3>
+            <span class="status-badge status-{{ site.status }}">
+                {% if site.status == 'running' %}
+                🟢 运行中
+                {% else %}
+                ⚪ 已停止
+                {% endif %}
+            </span>
+        </div>
+        <div class="site-card-body">
+            <div class="site-info-row">
+                <span class="label">🌐 域名</span>
+                <span class="value">{{ site.domains }}</span>
+            </div>
+            <div class="site-info-row">
+                <span class="label">🔌 端口</span>
+                <span class="value">{{ site.port }}</span>
+            </div>
+            {% if site.https_enabled %}
+            <div class="site-info-row">
+                <span class="label">🔒 HTTPS</span>
+                <span class="value">已启用</span>
+            </div>
+            {% endif %}
+        </div>
+        <div class="site-card-actions">
+            <a href="{{ url_for('site_edit', site_id=site.id) }}" class="btn btn-secondary btn-sm">✏️ 编辑</a>
+            <button class="btn btn-danger btn-sm" onclick="deleteSite('{{ site.id }}', '{{ site.name }}')">🗑️ 删除</button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">📭</div>
+    <h3>还没有配置任何站点</h3>
+    <p>点击右上角「新建站点」开始配置你的第一个网站</p>
+    <a href="{{ url_for('site_new') }}" class="btn btn-primary">➕ 新建站点</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function deleteSite(id, name) {
+    if (!confirm(`确定要删除站点「${name}」吗？此操作不可恢复。`)) return;
+    const res = await fetch(`/api/sites/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+        location.reload();
+    } else {
+        alert('删除失败：' + (data.errors || []).join('\n'));
+    }
+}
+</script>
+{% endblock %}

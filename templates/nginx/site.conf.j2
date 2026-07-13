@@ -1,0 +1,82 @@
+# {{ site_name }} - 由 Easy Nginx 自动生成
+# 站点 ID: {{ site_id }}
+
+{% if worker_connections %}
+# 并发连接数限制（写入 http 块时生效，此处作为注释参考）
+# worker_connections {{ worker_connections }};
+{% endif %}
+
+server {
+    listen {{ port }}{% if https_enabled %} ssl{% endif %};
+    server_name {{ domains | join(' ') }};
+
+{% if https_enabled and ssl_cert_path and ssl_key_path %}
+    ssl_certificate {{ ssl_cert_path }};
+    ssl_certificate_key {{ ssl_key_path }};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+{% endif %}
+
+    root {{ root_dir }};
+    index {{ index_file }};
+
+{% if autoindex %}
+    autoindex on;
+{% else %}
+    autoindex off;
+{% endif %}
+
+{% if gzip_enabled %}
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+{% endif %}
+
+{% if ip_whitelist %}
+    # IP 访问限制
+{% for ip in ip_whitelist %}
+    allow {{ ip }};
+{% endfor %}
+    deny all;
+{% endif %}
+
+{% for rule in rules %}
+    location {% if rule.modifier %}{{ rule.modifier }} {% endif %}{{ rule.path }} {
+{% if rule.action == 'static' %}
+        try_files $uri $uri/ =404;
+{% if cache_expires %}
+        expires {{ cache_expires }};
+        add_header Cache-Control "public, immutable";
+{% endif %}
+{% elif rule.action == 'proxy' %}
+        proxy_pass {{ rule.proxy_pass }};
+{% if rule.preserve_host %}
+        proxy_set_header Host $host;
+{% endif %}
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout {{ rule.timeout }}s;
+        proxy_send_timeout {{ rule.timeout }}s;
+        proxy_read_timeout {{ rule.timeout }}s;
+{% elif rule.action == 'redirect' %}
+        return 301 {{ rule.redirect_target }};
+{% endif %}
+    }
+
+{% endfor %}
+    # 默认：返回静态文件
+    location / {
+        try_files $uri $uri/ =404;
+{% if cache_expires %}
+        expires {{ cache_expires }};
+        add_header Cache-Control "public";
+{% endif %}
+    }
+
+{% if custom_config %}
+    # 用户自定义配置
+{{ custom_config | indent(4, first=False) }}
+{% endif %}
+}

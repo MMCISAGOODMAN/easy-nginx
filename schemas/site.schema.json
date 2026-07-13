@@ -1,0 +1,158 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Easy Nginx 站点配置",
+  "description": "单个站点的完整配置结构",
+  "type": "object",
+  "required": ["id", "name", "domains", "port", "root_dir"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "站点唯一标识（UUID）",
+      "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    },
+    "name": {
+      "type": "string",
+      "description": "站点名称（用户自定义别名）",
+      "example": "我的博客"
+    },
+    "domains": {
+      "type": "string",
+      "description": "域名列表，多个用逗号分隔",
+      "example": "blog.example.com, www.blog.example.com"
+    },
+    "port": {
+      "type": "integer",
+      "enum": [80, 81, 82, 8080, 443],
+      "default": 80,
+      "description": "监听端口"
+    },
+    "https_enabled": {
+      "type": "boolean",
+      "default": false,
+      "description": "是否启用 HTTPS"
+    },
+    "ssl_cert_path": {
+      "type": "string",
+      "description": "SSL 证书文件路径"
+    },
+    "ssl_key_path": {
+      "type": "string",
+      "description": "SSL 私钥文件路径"
+    },
+    "root_dir": {
+      "type": "string",
+      "description": "网站根目录",
+      "example": "/var/www/blog"
+    },
+    "index_file": {
+      "type": "string",
+      "default": "index.html",
+      "description": "入口文件"
+    },
+    "autoindex": {
+      "type": "boolean",
+      "default": false,
+      "description": "是否允许列出目录"
+    },
+    "rules": {
+      "type": "array",
+      "description": "转发规则列表",
+      "items": {
+        "type": "object",
+        "required": ["trigger_path", "match_type", "action"],
+        "properties": {
+          "trigger_path": {
+            "type": "string",
+            "description": "触发路径",
+            "example": "/api/"
+          },
+          "match_type": {
+            "type": "string",
+            "enum": ["prefix", "suffix", "exact"],
+            "description": "匹配方式：prefix=以...开头, suffix=以...结尾, exact=完全匹配"
+          },
+          "action": {
+            "type": "string",
+            "enum": ["static", "proxy", "redirect"],
+            "description": "处理方式：static=返回静态文件, proxy=转发到后端, redirect=重定向"
+          },
+          "backend_address": {
+            "type": "string",
+            "description": "后端地址（action=proxy 时必填）",
+            "example": "127.0.0.1:8080"
+          },
+          "preserve_host": {
+            "type": "boolean",
+            "default": true,
+            "description": "是否保留原始域名"
+          },
+          "timeout": {
+            "type": "integer",
+            "default": 30,
+            "description": "超时时间（秒）"
+          },
+          "redirect_target": {
+            "type": "string",
+            "description": "重定向目标地址（action=redirect 时必填）",
+            "example": "https://example.com/new-path"
+          }
+        }
+      }
+    },
+    "worker_connections": {
+      "type": "integer",
+      "default": 1024,
+      "description": "并发连接数"
+    },
+    "gzip_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "是否启用 Gzip 压缩"
+    },
+    "cache_duration": {
+      "type": "string",
+      "enum": ["none", "1d", "7d", "30d"],
+      "default": "7d",
+      "description": "静态文件缓存时间"
+    },
+    "ip_whitelist": {
+      "type": "string",
+      "description": "允许访问的 IP 列表，每行一个",
+      "example": "192.168.1.0/24\n10.0.0.1"
+    },
+    "custom_config": {
+      "type": "string",
+      "description": "用户自定义 Nginx 指令"
+    }
+  },
+  "example": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "我的博客",
+    "domains": "blog.example.com",
+    "port": 80,
+    "https_enabled": false,
+    "root_dir": "/var/www/blog",
+    "index_file": "index.html",
+    "autoindex": false,
+    "rules": [
+      {
+        "trigger_path": "/api/",
+        "match_type": "prefix",
+        "action": "proxy",
+        "backend_address": "127.0.0.1:3000",
+        "preserve_host": true,
+        "timeout": 30
+      },
+      {
+        "trigger_path": ".jpg",
+        "match_type": "suffix",
+        "action": "static"
+      }
+    ],
+    "worker_connections": 1024,
+    "gzip_enabled": true,
+    "cache_duration": "7d",
+    "ip_whitelist": "",
+    "custom_config": ""
+  }
+}

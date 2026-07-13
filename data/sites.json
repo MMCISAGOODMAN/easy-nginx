@@ -1,0 +1,27 @@
+[
+  {
+    "id": "763bd705-abd6-4b6f-824d-2a545d40482b",
+    "name": "测试站点",
+    "domains": "test.example.com",
+    "port": 80,
+    "https_enabled": false,
+    "root_dir": "/var/www/test",
+    "index_file": "index.html",
+    "autoindex": false,
+    "rules": [
+      {
+        "trigger_path": "/api/",
+        "match_type": "prefix",
+        "action": "proxy",
+        "backend_address": "127.0.0.1:8080",
+        "preserve_host": true,
+        "timeout": 30
+      }
+    ],
+    "worker_connections": 1024,
+    "gzip_enabled": true,
+    "cache_duration": "7d",
+    "ip_whitelist": "",
+    "custom_config": ""
+  }
+]

@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}{% if is_edit %}编辑站点{% else %}新建站点{% endif %}{% endblock %}
+
+{% block content %}
+<div class="form-page">
+    <div class="form-header">
+        <a href="{{ url_for('index') }}" class="back-link">← 返回站点列表</a>
+        <h2>{% if is_edit %}✏️ 编辑站点{% else %}➕ 新建站点{% endif %}</h2>
+    </div>
+
+    <!-- 步骤指示器 -->
+    <div class="step-indicator">
+        <div class="step active" data-step="1">
+            <span class="step-num">1</span>
+            <span class="step-label">基本信息</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" data-step="2">
+            <span class="step-num">2</span>
+            <span class="step-label">网站文件</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" data-step="3">
+            <span class="step-num">3</span>
+            <span class="step-label">转发规则</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" data-step="4">
+            <span class="step-num">4</span>
+            <span class="step-label">性能与高级</span>
+        </div>
+    </div>
+
+    <form id="siteForm" class="site-form" novalidate>
+        <input type="hidden" id="siteId" value="{{ site.id if is_edit else 'new' }}">
+        <input type="hidden" id="sslCertPath" value="{{ site.ssl_cert_path or '' }}">
+        <input type="hidden" id="sslKeyPath" value="{{ site.ssl_key_path or '' }}">
+
+        <!-- 第一步：基本信息 -->
+        <div class="form-step active" data-step="1">
+            <h3>📝 基本信息</h3>
+            <div class="form-group">
+                <label for="name">站点名称 <span class="required">*</span></label>
+                <input type="text" id="name" name="name" value="{{ site.name }}"
+                       placeholder="例如：我的博客" required>
+                <span class="field-error" id="nameError"></span>
+            </div>
+            <div class="form-group">
+                <label for="domains">域名 <span class="required">*</span></label>
+                <input type="text" id="domains" name="domains" value="{{ site.domains }}"
+                       placeholder="例如：blog.example.com, www.blog.example.com" required>
+                <span class="hint">多个域名用英文逗号分隔</span>
+                <span class="field-error" id="domainsError"></span>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="port">端口号</label>
+                    <select id="port" name="port">
+                        {% for p in [80, 81, 82, 8080, 443] %}
+                        <option value="{{ p }}" {% if site.port == p %}selected{% endif %}>{{ p }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="switch-label">
+                    <input type="checkbox" id="httpsEnabled" name="https_enabled"
+                           {% if site.https_enabled %}checked{% endif %}>
+                    <span class="switch-slider"></span>
+                    🔒 启用 HTTPS
+                </label>
+            </div>
+            <div id="sslUploadSection" class="ssl-section" {% if not site.https_enabled %}style="display:none"{% endif %}>
+                <div class="form-group">
+                    <label>SSL 证书文件 (.pem / .crt)</label>
+                    <input type="file" id="sslCert" accept=".pem,.crt,.cer">
+                </div>
+                <div class="form-group">
+                    <label>SSL 私钥文件 (.key)</label>
+                    <input type="file" id="sslKey" accept=".key,.pem">
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="uploadSslBtn">📤 上传证书</button>
+                <span class="hint" id="sslStatus">
+                    {% if site.ssl_cert_path %}✅ 证书已上传{% endif %}
+                </span>
+            </div>
+        </div>
+
+        <!-- 第二步：网站文件 -->
+        <div class="form-step" data-step="2">
+            <h3>📁 网站文件</h3>
+            <div class="form-group">
+                <label for="rootDir">网站根目录 <span class="required">*</span></label>
+                <div class="input-with-btn">
+                    <input type="text" id="rootDir" name="root_dir" value="{{ site.root_dir }}"
+                           placeholder="例如：/var/www/blog" required>
+                    <button type="button" class="btn btn-secondary btn-sm" id="browseBtn">📂 浏览</button>
+                </div>
+                <span class="field-error" id="rootDirError"></span>
+            </div>
+            <div class="form-group">
+                <label for="indexFile">入口文件</label>
+                <input type="text" id="indexFile" name="index_file" value="{{ site.index_file or 'index.html' }}"
+                       placeholder="默认：index.html">
+            </div>
+            <div class="form-group">
+                <label class="switch-label">
+                    <input type="checkbox" id="autoindex" name="autoindex"
+                           {% if site.autoindex %}checked{% endif %}>
+                    <span class="switch-slider"></span>
+                    📂 允许列出目录（无默认页时显示文件列表）
+                </label>
+            </div>
+        </div>
+
+        <!-- 第三步：转发规则 -->
+        <div class="form-step" data-step="3">
+            <h3>🔀 转发规则</h3>
+            <p class="step-desc">根据访问路径，决定如何处理用户的请求。可以添加多条规则，按顺序匹配。</p>
+            <div id="rulesList" class="rules-list"></div>
+            <button type="button" class="btn btn-secondary" id="addRuleBtn">➕ 添加规则</button>
+        </div>
+
+        <!-- 第四步：性能与高级 -->
+        <div class="form-step" data-step="4">
+            <h3>⚡ 性能与高级</h3>
+            <details class="advanced-section" open>
+                <summary>展开高级设置</summary>
+                <div class="advanced-content">
+                    <div class="form-group">
+                        <label for="workerConnections">并发连接数</label>
+                        <input type="number" id="workerConnections" name="worker_connections"
+                               value="{{ site.worker_connections or 1024 }}" min="1" max="65535">
+                    </div>
+                    <div class="form-group">
+                        <label class="switch-label">
+                            <input type="checkbox" id="gzipEnabled" name="gzip_enabled"
+                                   {% if site.gzip_enabled is not defined or site.gzip_enabled %}checked{% endif %}>
+                            <span class="switch-slider"></span>
+                            📦 启用 Gzip 压缩
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label for="cacheDuration">静态文件缓存时间</label>
+                        <select id="cacheDuration" name="cache_duration">
+                            <option value="none" {% if site.cache_duration == 'none' %}selected{% endif %}>不缓存</option>
+                            <option value="1d" {% if site.cache_duration == '1d' %}selected{% endif %}>1 天</option>
+                            <option value="7d" {% if site.cache_duration is not defined or site.cache_duration == '7d' %}selected{% endif %}>7 天</option>
+                            <option value="30d" {% if site.cache_duration == '30d' %}selected{% endif %}>30 天</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="ipWhitelist">限制 IP 访问</label>
+                        <textarea id="ipWhitelist" name="ip_whitelist" rows="4"
+                                  placeholder="每行一个 IP 或网段，例如：&#10;192.168.1.0/24&#10;10.0.0.1">{{ site.ip_whitelist or '' }}</textarea>
+                        <span class="hint">留空表示不限制，允许所有 IP 访问</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="customConfig">自定义额外配置</label>
+                        <textarea id="customConfig" name="custom_config" rows="6"
+                                  placeholder="高级用户可直接写入 Nginx 指令，例如：&#10;add_header X-Custom-Header 'value';">{{ site.custom_config or '' }}</textarea>
+                        <span class="hint">⚠️ 仅供熟悉 Nginx 的用户使用</span>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <!-- 步骤导航 -->
+        <div class="step-nav">
+            <button type="button" class="btn btn-secondary" id="prevStepBtn" style="display:none">⬅️ 上一步</button>
+            <button type="button" class="btn btn-primary" id="nextStepBtn">下一步 ➡️</button>
+        </div>
+    </form>
+</div>
+
+<!-- 底部固定操作栏 -->
+<div class="bottom-bar">
+    <div class="bottom-bar-inner">
+        <div class="status-area" id="statusArea"></div>
+        <div class="action-buttons">
+            <button type="button" class="btn btn-secondary" id="previewBtn">👁️ 预览配置</button>
+            <button type="button" class="btn btn-secondary" id="rollbackBtn" {% if not is_edit %}style="display:none"{% endif %}>↩️ 回滚上一版</button>
+            <button type="button" class="btn btn-primary" id="saveBtn">💾 保存配置</button>
+            <button type="button" class="btn btn-success" id="reloadBtn">🔄 重启 Nginx</button>
+        </div>
+    </div>
+</div>
+
+<!-- 预览弹窗 -->
+<div class="modal" id="previewModal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3>👁️ 配置预览</h3>
+            <button class="modal-close" onclick="closePreview()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <pre id="previewContent" class="config-preview"></pre>
+        </div>
+    </div>
+</div>
+
+<!-- 目录浏览弹窗 -->
+<div class="modal" id="browseModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>📂 选择目录</h3>
+            <button class="modal-close" onclick="closeBrowse()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="browse-path" id="browseCurrentPath"></div>
+            <div class="browse-list" id="browseList"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" id="selectDirBtn">✅ 选择此目录</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const INITIAL_RULES = {{ site.rules | tojson }};
+    const IS_EDIT = {{ is_edit | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/form.js') }}"></script>
+{% endblock %}
